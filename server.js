@@ -5,7 +5,7 @@ const connectDB = require("./config/db.js");
 const auth = require("./routes/authRoutes.js")
 const axios = require("axios");
 const app = express();
-// connectDB();
+connectDB();
  
 app.use(cors());
 app.use(express.json());
@@ -41,7 +41,7 @@ app.post("/api/send-sms", async (req, res) => {
       "https://www.fast2sms.com/dev/bulkV2",
       {
         route: "q",
-        message: ` Dear ${message}, The book is currently issued to you. Kindly return it at your earliest convenience. Thank you!`,
+        message: ` Dear ${message}, The book is currently issued to you. Kindly return it at your earliest convenience.`,
         language: "english",
         flash: 0,
         numbers: number,
