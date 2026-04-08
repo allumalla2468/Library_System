@@ -5,7 +5,7 @@ const connectDB = require("./config/db.js");
 const auth = require("./routes/authRoutes.js")
 const axios = require("axios");
 const app = express();
-connectDB();
+// connectDB();
  
 app.use(cors());
 app.use(express.json());
