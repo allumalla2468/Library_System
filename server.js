@@ -5,6 +5,9 @@ const connectDB = require("./config/db.js");
 const auth = require("./routes/authRoutes.js")
 const axios = require("axios");
 const app = express();
+const cron = require("node-cron");
+const IssueReturn = require("./models/IssueReturn");
+const User = require("./models/User");
 connectDB();
 
 app.use(cors());
@@ -118,6 +121,56 @@ app.post("/api/send-otp", async (req, res) => {
     });
   }
 });
+
+
+
+
+cron.schedule("* * * * *", async () => {
+  console.log("⏰ Checking overdue books...");
+
+  const tenMinutesAgo = new Date();
+  tenMinutesAgo.setMinutes(tenMinutesAgo.getMinutes() - 4);
+
+  try {
+    const overdueBooks = await IssueReturn.find({
+      status: "issued",
+      issueDate: { $lte: tenMinutesAgo },
+      smsSent: false
+    });
+
+    for (let record of overdueBooks) {
+
+      const user = await User.findById(record.studentId);
+
+      if (user && user.PhoneNumber) {
+
+        await axios.post(
+          "https://www.fast2sms.com/dev/bulkV2",
+          {
+            route: "q",
+            message: `Dear ${user.name}, please return your issued book.`,
+            language: "english",
+            numbers: user.PhoneNumber,
+          },
+          {
+            headers: {
+              authorization: process.env.FAST2SMS_API_KEY,
+            },
+          }
+        );
+
+        console.log("✅ SMS sent to", user.PhoneNumber);
+
+        record.smsSent = true;
+        await record.save();
+      }
+    }
+
+  } catch (err) {
+    console.error("❌ CRON ERROR:", err);
+  }
+});
+
 
 app.listen(process.env.PORT || 3000, () => {
   console.log("Server running on port", process.env.PORT);

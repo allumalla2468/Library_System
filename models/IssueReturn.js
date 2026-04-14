@@ -1,6 +1,12 @@
 const mongoose = require("mongoose");
 
 const IssueReturnSchema = new mongoose.Schema({
+
+
+  smsSent: {
+    type: Boolean,
+    default: false
+  },
   bookId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Book",
@@ -11,15 +17,16 @@ const IssueReturnSchema = new mongoose.Schema({
     ref: "User",
     required: true
   },
-  issueDate: {
-    type: Date,
-    required: true
-  },
+issueDate: {
+  type: String,
+  required: true
+},
   returnDate: {
-    type: Date,
-    default: null
+  type: String,
+
+   
   },
-  
+
   returnedAt: {
     type: Date
   },
@@ -28,6 +35,6 @@ const IssueReturnSchema = new mongoose.Schema({
     enum: ["issued", "returned"],
     default: "issued"
   }
-}, { timestamps: true ,versionKey: false});
+}, { timestamps: true, versionKey: false });
 
 module.exports = mongoose.model("IssueReturn", IssueReturnSchema);

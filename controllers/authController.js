@@ -3,22 +3,26 @@ const Book = require("../models/Book");
 
 const IssueReturn = require("../models/IssueReturn");
 
-const currentTime = new Date().toLocaleString("en-IN", {
-  timeZone: "Asia/Kolkata"
-});
+
+
+const nowIST = new Date(
+  new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+);
+
+
 exports.Register = async (req, res) => {
   try {
-    const { name, role, Department,password,PhoneNumber,Email } = req.body;
+    const { name, role, Department, password, PhoneNumber, Email } = req.body;
 
-    if (!name || !Department || !password ||!PhoneNumber) {
+    if (!name || !Department || !password || !PhoneNumber) {
       return res.status(400).json({ message: "name and Department and password and phonenumber are required" });
     }
-    const existingUser = await User.findOne({PhoneNumber});
+    const existingUser = await User.findOne({ PhoneNumber });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
 
-   
+
     const admin = await User.create({
       name,
       password,
@@ -28,8 +32,9 @@ exports.Register = async (req, res) => {
       Department
     });
 
-    return res.status(201).json({ message: "registered successfully",
-      status : true,
+    return res.status(201).json({
+      message: "registered successfully",
+      status: true,
       name: admin.name,
     });
 
@@ -56,7 +61,7 @@ exports.Login = async (req, res) => {
 
     res.status(200).json({
       message: "Login successful",
-       status : true,
+      status: true,
       user: {
         id: user._id,
         name: user.name,
@@ -65,7 +70,7 @@ exports.Login = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({ status : false, message: "Server error", error });
+    res.status(500).json({ status: false, message: "Server error", error });
   }
 };
 
@@ -82,7 +87,7 @@ exports.addBook = async (req, res) => {
       });
     }
 
-    
+
     const exist = await Book.findOne({ title });
 
     if (exist) {
@@ -119,26 +124,26 @@ exports.getBooks = async (req, res) => {
 
 
     const search = req.query.search || ""
-  let filter = {}
-    if(search){
- filter.title = { $regex:search,$options:"i"}
-}
+    let filter = {}
+    if (search) {
+      filter.title = { $regex: search, $options: "i" }
+    }
 
-const page = parseInt(req.query.page) || 1;
-const limit = parseInt(req.query.limit) || 5;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 5;
 
-  const skip = (page -1) * limit
+    const skip = (page - 1) * limit
 
-    const books = await Book.find(filter).sort({createdAt:-1}).skip(skip).limit(limit)
+    const books = await Book.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit)
     // const books = await Book.find(filter).select("-createdAt -updatedAt")
-   const total = await Book.countDocuments(filter);
+    const total = await Book.countDocuments(filter);
     res.status(200).json({
       count: books.length,
       books,
       page,
       limit,
       totalPages: Math.ceil(total / limit)
-     
+
     });
 
   } catch (error) {
@@ -163,7 +168,7 @@ const limit = parseInt(req.query.limit) || 5;
 //     if (!name || !Department || !password ||!PhoneNumber) {
 //       return res.status(400).json({ message: "Stundentname and Department and password and PhoneNumber  are required" });
 //     }
- 
+
 //     const student = await Stundent.create({
 //       name,
 //       Department,
@@ -181,7 +186,7 @@ const limit = parseInt(req.query.limit) || 5;
 //   }
 // };
 
-exports.getStudents = async (req, res) => { 
+exports.getStudents = async (req, res) => {
   try {
     const students = await User.find().select("-password");
 
@@ -199,29 +204,36 @@ exports.getStudents = async (req, res) => {
 
 exports.issueBook = async (req, res) => {
   try {
-    const { bookId, studentId, issueDate } = req.body;
+    const { bookId, studentId } = req.body;
 
-    if (!bookId || !studentId || !issueDate) {
+    // ✅ validation
+    if (!bookId || !studentId) {
       return res.status(400).json({
-        message: "bookId, studentId, and issueDate are required"
+        message: "bookId and studentId are required"
       });
     }
 
-    // convert DD-MM-YYYY to Date
-    const parts = issueDate.split("-");
-    const formattedDate = new Date(parts[2], parts[1] - 1, parts[0]);
+  const now = new Date();
 
-    if (isNaN(formattedDate.getTime())) {
-      return res.status(400).json({ message: "Invalid issueDate format" });
-    }
+const issueDateFormatted = now.toLocaleString("en-IN", {
+  timeZone: "Asia/Kolkata",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: true
+});
 
+    // ✅ find book
     const book = await Book.findById(bookId);
 
     if (!book) {
       return res.status(400).json({ message: "Book not found" });
     }
 
-    // prevent same book duplicate only
+    // ✅ prevent duplicate issue
     const sameBookIssue = await IssueReturn.findOne({
       bookId,
       studentId,
@@ -234,32 +246,35 @@ exports.issueBook = async (req, res) => {
       });
     }
 
+    // ✅ stock check
     if (book.stock <= 0) {
       return res.status(400).json({
         message: "Book out of stock"
       });
     }
 
-    // decrease stock
+    // ✅ decrease stock
     book.stock -= 1;
     await book.save();
 
+    // ✅ create record
     const issueRecord = await IssueReturn.create({
       bookId,
       studentId,
-      issueDate: formattedDate,
-      status: "issued",
-      issuedAt: new Date()
+      issueDate: issueDateFormatted,   // stored as Date
+      issuedAt: nowIST,    // stored as Date
+      status: "issued"
     });
 
-    const issuedAtIST = new Date().toLocaleString("en-IN", {
-      timeZone: "Asia/Kolkata"
-    });
-
+    // ✅ formatted response
     res.status(201).json({
       message: "Book issued successfully",
-      issueRecord,
-      issuedAt: issuedAtIST,
+      issueRecord: {
+        ...issueRecord._doc,
+        issueDate:issueDateFormatted,
+        issuedAt: formatIST(issueRecord.issueDate),
+      },
+      currentDateTime: formatIST(nowIST),
       remainingStock: book.stock
     });
 
@@ -271,32 +286,43 @@ exports.issueBook = async (req, res) => {
 
 exports.returnBook = async (req, res) => {
   try {
-
-    const { bookId, studentId, returnDate } = req.body;
-
-    if (!bookId || !studentId || !returnDate) {
+    const { bookId, studentId } = req.body;
+ 
+    // ✅ validation
+    if (!bookId || !studentId) {
       return res.status(400).json({
-        message: "bookId, studentId, and returnDate are required"
+        message: "bookId and studentId are required"
       });
     }
-
-    const parts = returnDate.split("-");
-    const formattedDate = new Date(parts[2], parts[1] - 1, parts[0]);
-
-    if (isNaN(formattedDate.getTime())) {
-      return res.status(400).json({
-        message: "Invalid returnDate format"
+ 
+    // ✅ helper function (same as issueBook)
+    const formatIST = (date) =>
+      new Date(date).toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+         hour12: true 
       });
-    }
-
+ 
+    // ✅ current IST datetime
+    const nowIST = new Date(
+      new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+    );
+ 
+    // ✅ find book
     const book = await Book.findById(bookId);
-
+ 
     if (!book) {
       return res.status(400).json({
         message: "Book not found"
       });
     }
-
+ 
+    // ✅ find issued record & update
     const issueRecord = await IssueReturn.findOneAndUpdate(
       {
         bookId,
@@ -304,34 +330,37 @@ exports.returnBook = async (req, res) => {
         status: "issued"
       },
       {
-        returnDate: formattedDate,
-        returnedAt: new Date(),
+        returnDate: nowIST,   // ✅ current date
+        returnedAt: nowIST,   // ✅ current time
         status: "returned"
       },
       { new: true }
     );
-
+ 
     if (!issueRecord) {
       return res.status(400).json({
         message: "No active issue record found"
       });
     }
-
-    // increase stock
+ 
+    // ✅ increase stock
     book.stock += 1;
     await book.save();
-
-    const returnedAtIST = new Date().toLocaleString("en-IN", {
-      timeZone: "Asia/Kolkata"
-    });
-
+ 
+    // ✅ formatted response
     res.status(200).json({
       message: "Book returned successfully",
-      issueRecord,
-      returnedAt: returnedAtIST,
+      issueRecord: {
+        ...issueRecord._doc,
+        issueDate: formatIST(issueRecord.issueDate),
+        issuedAt: formatIST(issueRecord.issuedAt),
+        returnDate: formatIST(issueRecord.returnDate),
+        returnedAt: formatIST(issueRecord.returnedAt)
+      },
+      currentDateTime: formatIST(nowIST),
       updatedStock: book.stock
     });
-
+ 
   } catch (error) {
     console.error(error);
     res.status(500).json({
@@ -346,36 +375,55 @@ exports.returnBook = async (req, res) => {
 exports.getUserWithHistory = async (req, res) => {
   try {
     const userId = req.params.id;
-
+ 
+    // ✅ helper function (IST format)
+    const formatIST = (date) =>
+      date
+        ? new Date(date).toLocaleString("en-IN", {
+            timeZone: "Asia/Kolkata",
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+             hour12: true 
+          })
+        : null;
+ 
+    // ✅ find user
     const user = await User.findById(userId).select("-__v");
-
+ 
     if (!user) {
       return res.status(404).json({
         message: "User not found"
       });
     }
-
+ 
+    // ✅ get history
     const userhistory = await IssueReturn.find({ studentId: userId })
       .populate("bookId", "title author image")
-      .select("bookId issueDate returnDate returnedAt status createdAt")
+      .select("bookId issueDate issuedAt returnDate returnedAt status createdAt")
       .sort({ createdAt: -1 });
-
-    // ✅ Format Time to IST
-    const formattedHistory = userhistory.map(record => ({
+ 
+    // ✅ format all dates to IST
+    const formattedHistory = userhistory.map((record) => ({
       ...record.toObject(),
-      issueTime: record.createdAt
-        ? record.createdAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
-        : null,
-      returnTime: record.returnedAt
-        ? record.returnedAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
-        : null
+ 
+      issueDate: formatIST(record.issueDate),
+      issuedAt: formatIST(record.issuedAt),
+      returnDate: formatIST(record.returnDate),
+      returnedAt: formatIST(record.returnedAt),
+ 
+      createdAt: formatIST(record.createdAt)
     }));
-
+ 
+    // ✅ response
     return res.status(200).json({
       user,
       history: formattedHistory
     });
-
+ 
   } catch (err) {
     console.error(err);
     res.status(500).json({
