@@ -4,11 +4,21 @@ const Book = require("../models/Book");
 const IssueReturn = require("../models/IssueReturn");
 
 
+ const formatIST = (date) =>
+      new Date(date).toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      });
 
-const nowIST = new Date(
-  new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
-);
-
+    // ✅ current IST date & time
+    const nowIST = new Date(
+      new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+    );
 
 exports.Register = async (req, res) => {
   try {
@@ -213,18 +223,8 @@ exports.issueBook = async (req, res) => {
       });
     }
 
-  const now = new Date();
-
-const issueDateFormatted = now.toLocaleString("en-IN", {
-  timeZone: "Asia/Kolkata",
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-  hour12: true
-});
+    // ✅ helper function for IST format
+   
 
     // ✅ find book
     const book = await Book.findById(bookId);
@@ -261,7 +261,7 @@ const issueDateFormatted = now.toLocaleString("en-IN", {
     const issueRecord = await IssueReturn.create({
       bookId,
       studentId,
-      issueDate: issueDateFormatted,   // stored as Date
+      issueDate: nowIST,   // stored as Date
       issuedAt: nowIST,    // stored as Date
       status: "issued"
     });
@@ -271,8 +271,8 @@ const issueDateFormatted = now.toLocaleString("en-IN", {
       message: "Book issued successfully",
       issueRecord: {
         ...issueRecord._doc,
-        issueDate:issueDateFormatted,
-        issuedAt: formatIST(issueRecord.issueDate),
+        issueDate: formatIST(issueRecord.issueDate),
+        
       },
       currentDateTime: formatIST(nowIST),
       remainingStock: book.stock
@@ -295,23 +295,7 @@ exports.returnBook = async (req, res) => {
       });
     }
  
-    // ✅ helper function (same as issueBook)
-    const formatIST = (date) =>
-      new Date(date).toLocaleString("en-IN", {
-        timeZone: "Asia/Kolkata",
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-         hour12: true 
-      });
- 
-    // ✅ current IST datetime
-    const nowIST = new Date(
-      new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
-    );
+    
  
     // ✅ find book
     const book = await Book.findById(bookId);
@@ -321,7 +305,7 @@ exports.returnBook = async (req, res) => {
         message: "Book not found"
       });
     }
- 
+  const now = new Date();
     // ✅ find issued record & update
     const issueRecord = await IssueReturn.findOneAndUpdate(
       {
@@ -330,8 +314,8 @@ exports.returnBook = async (req, res) => {
         status: "issued"
       },
       {
-        returnDate: nowIST,   // ✅ current date
-        returnedAt: nowIST,   // ✅ current time
+        returnDate: now,   // ✅ current date
+        returnedAt: now,   // ✅ current time
         status: "returned"
       },
       { new: true }
@@ -353,11 +337,11 @@ exports.returnBook = async (req, res) => {
       issueRecord: {
         ...issueRecord._doc,
         issueDate: formatIST(issueRecord.issueDate),
-        issuedAt: formatIST(issueRecord.issuedAt),
+
         returnDate: formatIST(issueRecord.returnDate),
         returnedAt: formatIST(issueRecord.returnedAt)
       },
-      currentDateTime: formatIST(nowIST),
+      currentDateTime: formatIST(now),
       updatedStock: book.stock
     });
  
@@ -386,8 +370,7 @@ exports.getUserWithHistory = async (req, res) => {
             year: "numeric",
             hour: "2-digit",
             minute: "2-digit",
-            second: "2-digit",
-             hour12: true 
+            second: "2-digit"
           })
         : null;
  

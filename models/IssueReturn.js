@@ -17,14 +17,13 @@ const IssueReturnSchema = new mongoose.Schema({
     ref: "User",
     required: true
   },
-issueDate: {
-  type: String,
-  required: true
-},
+  issueDate: {
+    type: Date,
+    required: true
+  },
   returnDate: {
-  type: String,
-
-   
+    type: Date,
+    default: null
   },
 
   returnedAt: {

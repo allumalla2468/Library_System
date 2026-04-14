@@ -123,14 +123,73 @@ app.post("/api/send-otp", async (req, res) => {
 });
 
 
+// cron.schedule("0 * * * *", async () => {  
+//   console.log("⏰ Checking overdue books...");
 
+//   const fourDaysAgo = new Date();
+//   fourDaysAgo.setDate(fourDaysAgo.getDate() - 4);
 
+//   try {
+//     const overdueBooks = await IssueReturn.find({
+//       status: "issued",
+//       issueDate: { $lte: fourDaysAgo },
+//       smsSent: false
+//     });
+
+//     for (let record of overdueBooks) {
+
+//       const user = await User.findById(record.studentId);
+
+//       if (user && user.PhoneNumber) {
+
+//         await axios.post(
+//           "https://www.fast2sms.com/dev/bulkV2",
+//           {
+//             route: "q",
+//             message: `Dear ${user.name}, please return your issued book.`,
+//             language: "english",
+//             numbers: user.PhoneNumber,
+//           },
+//           {
+//             headers: {
+//               authorization: process.env.FAST2SMS_API_KEY,
+//             },
+//           }
+//         );
+
+//         console.log("✅ SMS sent to", user.PhoneNumber);
+
+//         // ✅ mark as sent
+//         record.smsSent = true;
+//         await record.save();
+//       }
+//     }
+
+//   } catch (err) {
+//     console.error("❌ CRON ERROR:", err);
+//   }
+// });
+
+ const formatIST = (date) =>
+      new Date(date).toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      });
+
+    const now = new Date();
 cron.schedule("* * * * *", async () => {
   console.log("⏰ Checking overdue books...");
 
   const tenMinutesAgo = new Date();
-  tenMinutesAgo.setMinutes(tenMinutesAgo.getMinutes() - 4);
+  tenMinutesAgo.setMinutes(tenMinutesAgo.getMinutes() - 3);
 
+    console.log("Current Time:", formatIST(now));
+    console.log("Checking before:", formatIST(tenMinutesAgo));
   try {
     const overdueBooks = await IssueReturn.find({
       status: "issued",
@@ -148,7 +207,7 @@ cron.schedule("* * * * *", async () => {
           "https://www.fast2sms.com/dev/bulkV2",
           {
             route: "q",
-            message: `Dear ${user.name}, please return your issued book.`,
+           message: `Dear ${user.name}, The book is currently issued to you. Kindly return it at your earliest convenience.`,
             language: "english",
             numbers: user.PhoneNumber,
           },
