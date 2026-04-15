@@ -4,21 +4,21 @@ const Book = require("../models/Book");
 const IssueReturn = require("../models/IssueReturn");
 
 
- const formatIST = (date) =>
-      new Date(date).toLocaleString("en-IN", {
-        timeZone: "Asia/Kolkata",
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit"
-      });
+const formatIST = (date) =>
+  new Date(date).toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
 
-    // ✅ current IST date & time
-    const nowIST = new Date(
-      new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
-    );
+// ✅ current IST date & time
+const nowIST = new Date(
+  new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+);
 
 exports.Register = async (req, res) => {
   try {
@@ -224,7 +224,7 @@ exports.issueBook = async (req, res) => {
     }
 
     // ✅ helper function for IST format
-   
+
 
     // ✅ find book
     const book = await Book.findById(bookId);
@@ -257,12 +257,14 @@ exports.issueBook = async (req, res) => {
     book.stock -= 1;
     await book.save();
 
+    const now = new Date();
+
     // ✅ create record
     const issueRecord = await IssueReturn.create({
       bookId,
       studentId,
-      issueDate: nowIST,   // stored as Date
-      issuedAt: nowIST,    // stored as Date
+      issueDate: now,   // stored as Date
+      issuedAt: now,    // stored as Date
       status: "issued"
     });
 
@@ -272,7 +274,7 @@ exports.issueBook = async (req, res) => {
       issueRecord: {
         ...issueRecord._doc,
         issueDate: formatIST(issueRecord.issueDate),
-        
+
       },
       currentDateTime: formatIST(nowIST),
       remainingStock: book.stock
@@ -287,25 +289,25 @@ exports.issueBook = async (req, res) => {
 exports.returnBook = async (req, res) => {
   try {
     const { bookId, studentId } = req.body;
- 
+
     // ✅ validation
     if (!bookId || !studentId) {
       return res.status(400).json({
         message: "bookId and studentId are required"
       });
     }
- 
-    
- 
+
+
+
     // ✅ find book
     const book = await Book.findById(bookId);
- 
+
     if (!book) {
       return res.status(400).json({
         message: "Book not found"
       });
     }
-  const now = new Date();
+    const now = new Date();
     // ✅ find issued record & update
     const issueRecord = await IssueReturn.findOneAndUpdate(
       {
@@ -320,17 +322,17 @@ exports.returnBook = async (req, res) => {
       },
       { new: true }
     );
- 
+
     if (!issueRecord) {
       return res.status(400).json({
         message: "No active issue record found"
       });
     }
- 
+
     // ✅ increase stock
     book.stock += 1;
     await book.save();
- 
+
     // ✅ formatted response
     res.status(200).json({
       message: "Book returned successfully",
@@ -344,7 +346,7 @@ exports.returnBook = async (req, res) => {
       currentDateTime: formatIST(now),
       updatedStock: book.stock
     });
- 
+
   } catch (error) {
     console.error(error);
     res.status(500).json({
@@ -359,54 +361,54 @@ exports.returnBook = async (req, res) => {
 exports.getUserWithHistory = async (req, res) => {
   try {
     const userId = req.params.id;
- 
+
     // ✅ helper function (IST format)
     const formatIST = (date) =>
       date
         ? new Date(date).toLocaleString("en-IN", {
-            timeZone: "Asia/Kolkata",
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit"
-          })
+          timeZone: "Asia/Kolkata",
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit"
+        })
         : null;
- 
+
     // ✅ find user
     const user = await User.findById(userId).select("-__v");
- 
+
     if (!user) {
       return res.status(404).json({
         message: "User not found"
       });
     }
- 
+
     // ✅ get history
     const userhistory = await IssueReturn.find({ studentId: userId })
       .populate("bookId", "title author image")
       .select("bookId issueDate issuedAt returnDate returnedAt status createdAt")
       .sort({ createdAt: -1 });
- 
+
     // ✅ format all dates to IST
     const formattedHistory = userhistory.map((record) => ({
       ...record.toObject(),
- 
+
       issueDate: formatIST(record.issueDate),
       issuedAt: formatIST(record.issuedAt),
       returnDate: formatIST(record.returnDate),
       returnedAt: formatIST(record.returnedAt),
- 
+
       createdAt: formatIST(record.createdAt)
     }));
- 
+
     // ✅ response
     return res.status(200).json({
       user,
       history: formattedHistory
     });
- 
+
   } catch (err) {
     console.error(err);
     res.status(500).json({
