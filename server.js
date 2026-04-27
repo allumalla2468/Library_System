@@ -16,93 +16,96 @@ app.use(express.json());
 
 app.use("/api", auth);
 
+const nodemailer = require("nodemailer");
 
-// ✅ ================== SMS FUNCTION ==================
+const sendEmail = async (to, subject, text) => {
+  try {
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
 
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: to,
+      subject: subject,
+      text: text,
+    });
 
-// const sendSMS = async (number, message) => {
-//   try {
-//     const response = await axios.post(
-//       "https://www.fast2sms.com/dev/bulkV2",
-//       {
-//         route: "q",
-//         message,
-//         language: "english",
-//         numbers: number,
-//       },
-//       {
-//         headers: {
-//           authorization: process.env.FAST2SMS_API_KEY,
-//           "Content-Type": "application/json",
-//         },
-//       }
-//     );
+    console.log("✅ Email sent to", to);
 
-//     return response.data;
-//   } catch (error) {
-//     console.error("❌ SMS ERROR:", error?.response?.data || error.message);
-//     throw error;
-//   }
-// };
-
-
+  } catch (error) {
+    console.error("❌ Email error:", error.message);
+  }
+};
 
 
 
 // ✅ ================== CRON JOB ==================
 
 
-// cron.schedule("* * * * *", async () => {
-//   console.log("⏰ Running SMS Cron...");
+cron.schedule("* * * * *", async () => {
+  console.log("⏰ Running EMAIL Cron...");
 
-//   try {
-//     // ⏳ 3 minutes ago time
-//     const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+  try {
+    const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
 
-//     // 🔥 Fetch only valid records
-//     const issues = await IssueReturn.find({
-//       issueDate: { $lte: threeMinutesAgo },
-//       smsSent: false,
-//       status: "issued", // ✅ don't send if returned
-//     }).populate("studentId");
+    const issues = await IssueReturn.find({
+      issueDate: { $lte: threeMinutesAgo },
+      smsSent: false,
+      status: "issued",
+    }).populate("studentId");
 
-//     for (const item of issues) {
-//       try {
-//         const phone = item?.studentId?.PhoneNumber;
+    console.log("Found records:", issues.length);
 
-//         if (!phone) {
-//           console.log(`❌ No phone for user ${item.studentId}`);
-//           continue;
-//         }
+    for (const item of issues) {
+      try {
+        const email = item?.studentId?.Email; // ✅ IMPORTANT (capital E)
 
-//         // 📩 Message with formatted time
-//         const formattedDate = new Date(item.issueDate).toLocaleString(
-//           "en-IN",
-//           { timeZone: "Asia/Kolkata" }
-//         );
+        if (!email) {
+          console.log(`❌ No email for user ${item.studentId}`);
+          continue;
+        }
 
-//         const message = `Reminder: Book issued on ${formattedDate}. Please return it.`;
+        const formattedDate = new Date(item.issueDate).toLocaleString(
+          "en-IN",
+          { timeZone: "Asia/Kolkata" }
+        );
 
-//         await sendSMS(phone, message);
+        const message = `Dear ${item.studentId.name},
 
-//         // ✅ Update flags
-//         item.smsSent = true;
-//         item.smsSentAt = new Date();
-//         await item.save();
+The book issued on ${formattedDate} is still not returned.
 
-//         console.log(`✅ SMS sent to ${phone}`);
-//       } catch (err) {
-//         console.error(`❌ Failed for record ${item._id}`);
+Please return it as soon as possible.
 
-//         item.smsFailed = true;
-//         await item.save();
-//       }
-//     }
-//   } catch (error) {
-//     console.error("❌ Cron Error:", error);
-//   }
-// });
+Thank you!`;
 
+        await sendEmail(
+          email,
+          "📚 Book Return Reminder",
+          message
+        );
+
+        item.smsSent = true; // reuse same field
+        item.smsSentAt = new Date();
+        await item.save();
+
+        console.log(`✅ Email sent to ${email}`);
+
+      } catch (err) {
+        console.error(`❌ Failed for record ${item._id}`);
+        item.smsFailed = true;
+        await item.save();
+      }
+    }
+
+  } catch (error) {
+    console.error("❌ Cron Error:", error);
+  }
+});
 
 // ✅ ================== START SERVER ==================
 app.listen(process.env.PORT || 3000, () => {

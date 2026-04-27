@@ -89,11 +89,11 @@ exports.Login = async (req, res) => {
 
 exports.addBook = async (req, res) => {
   try {
-    const { title, author, status, image, stock } = req.body;
+    const { title, author, status, image, stock,Department } = req.body;
 
-    if (!title || !author || !image || !stock) {
+    if (!title || !author || !image || !stock || !Department) {
       return res.status(400).json({
-        message: "Title, author, image and stock are required"
+        message: "Title, author, image, stock and Department are required"
       });
     }
 
@@ -112,7 +112,8 @@ exports.addBook = async (req, res) => {
       author,
       status,
       image,
-      stock
+      stock,
+       Department
     });
 
     res.status(201).json({
