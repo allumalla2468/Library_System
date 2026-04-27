@@ -8,6 +8,9 @@ const connectDB = require("./config/db.js");
 const auth = require("./routes/authRoutes.js");
 const IssueReturn = require("./models/IssueReturn");
 
+const dns = require("dns");
+dns.setDefaultResultOrder("ipv4first"); // ✅ FIX
+
 const app = express();
 connectDB();
 
@@ -21,7 +24,10 @@ const nodemailer = require("nodemailer");
 const sendEmail = async (to, subject, text) => {
   try {
     const transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
+      family: 4, // ✅ FORCE IPv4 (IMPORTANT)
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
